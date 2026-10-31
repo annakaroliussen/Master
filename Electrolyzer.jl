@@ -777,7 +777,7 @@ function generate_surrogate_data()
     end
 
     # Lagre resultatene
-    # CSV.write(joinpath(@__DIR__, "surrogate_data.csv"), data)
+    CSV.write(joinpath(@__DIR__, "surrogate_data.csv"), data)
 
     println("Simulation data saved!")
 
