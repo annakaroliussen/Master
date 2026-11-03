@@ -15,6 +15,10 @@ function scaled(x)
     return (x .- ((maximum(x)+minimum(x))/2))./(maximum(x)-minimum(x))/2
 end
 
+function scaled_minmax(x)
+    return (x .- minimum(x))./(maximum(x)-minimum(x))
+end
+
 data = CSV.read(joinpath(@__DIR__, "surrogate_data.csv"), DataFrame)
 
 data_validation = CSV.read(joinpath("/home/annkar/NewCode/Data", "surrogate_data_Pw_validation.csv"), DataFrame)
@@ -334,7 +338,7 @@ function SurrogteModel_validationData()
 
 end
 
-function SurrogateModel_SeveralModels()
+function SurrogateModel_SeveralInputs()
     data = CSV.read(joinpath("/home/annkar/NewCode/Data", "surrogate_data_Pw_T_training.csv"), DataFrame)
 
     
@@ -342,9 +346,9 @@ function SurrogateModel_SeveralModels()
     T_train = data.Temperature
     HTO_train = data.HTO
 
-    Pw_train_scaled = scaled(Pw_train)
-    T_train_scaled = scaled(T_train)
-    HTO_train_scaled = scaled(HTO_train)
+    Pw_train_scaled = scaled_minmax(Pw_train)
+    T_train_scaled = scaled_minmax(T_train)
+    HTO_train_scaled = scaled_minmax(HTO_train)
 
     N = length(Pw_train_scaled)
 
@@ -354,26 +358,71 @@ function SurrogateModel_SeveralModels()
     model_hyperbolic_Pw_T_01 = Model(Ipopt.Optimizer)
     set_attribute(model_hyperbolic_Pw_T_01, "linear_solver", "mumps")
 
+    model_quadratic_Pw_T_01 = Model(Ipopt.Optimizer)
+    set_attribute(model_quadratic_Pw_T_01, "linear_solver", "mumps")
+
+    model_logarithmic_Pw_T_01 = Model(Ipopt.Optimizer)
+    set_attribute(model_logarithmic_Pw_T_01, "linear_solver", "mumps")
 
     ##=====================================================================
     #defining variables for the differet polynomial regression models
     ##=====================================================================
-    @variable(model_hyperbolic_Pw_T_01, beta00)
-    @variable(model_hyperbolic_Pw_T_01, beta01)
-    @variable(model_hyperbolic_Pw_T_01, beta02)
-    @variable(model_hyperbolic_Pw_T_01, beta03 >= 0.001)
-    @variable(model_hyperbolic_Pw_T_01, beta04 >= 0.001)
-    @variable(model_hyperbolic_Pw_T_01, HTO_01[1:N])
+
+    @variable(model_hyperbolic_Pw_T_01, beta00_1)
+    @variable(model_hyperbolic_Pw_T_01, beta01_1)
+    @variable(model_hyperbolic_Pw_T_01, beta02_1)
+    @variable(model_hyperbolic_Pw_T_01, beta03_1)
+    @variable(model_hyperbolic_Pw_T_01, beta04_1)
+    @variable(model_hyperbolic_Pw_T_01, beta05_1)
+    @variable(model_hyperbolic_Pw_T_01, c >= 0.0)
+
+    @variable(model_hyperbolic_Pw_T_01, HTO_01_1[1:N])
     #create the constraints for the polynomial regression model
-    @constraint(model_hyperbolic_Pw_T_01, [i=1:N], beta00 + beta01*1/(Pw_train_scaled[i] +beta02) + beta03*(1/(T_train_scaled[i]+beta04)) + beta04*Pw_train_scaled[i]*T_train_scaled[i] == HTO_01[i])
+    @constraint(model_hyperbolic_Pw_T_01, [i=1:N], beta00_1 + beta01_1*1/(Pw_train_scaled[i] + c)
+     + beta02_1*(1/(T_train_scaled[i]+ c))
+     + beta03_1*Pw_train_scaled[i]*T_train_scaled[i] 
+     + beta04_1*Pw_train_scaled[i]^2*T_train_scaled[i]
+     + beta05_1*T_train_scaled[i]/(Pw_train_scaled[i]+c)  == HTO_01_1[i])
     
     
     # defining the objective function for the polynomial regression model
-    @objective(model_hyperbolic_Pw_T_01, Min, sum((HTO_01[i] - HTO_train_scaled[i])^2 for i in 1:length(Pw_train_scaled)))
+    @objective(model_hyperbolic_Pw_T_01, Min, sum((HTO_01_1[i] - HTO_train_scaled[i])^2 for i in 1:length(Pw_train_scaled)))
+
+    ##=====================================================================
+    #Quadratic regression model
+    ##====================================================================
+
+        #new model with different scaling for the inputs
+    @variable(model_quadratic_Pw_T_01, beta00_2)
+    @variable(model_quadratic_Pw_T_01, beta01_2)
+    @variable(model_quadratic_Pw_T_01, beta02_2)
+    @variable(model_quadratic_Pw_T_01, beta03_2)
+    @variable(model_quadratic_Pw_T_01, beta04_2)
+    @variable(model_quadratic_Pw_T_01, HTO_01_2[1:N])
+    #create the constraints for the polynomial regression model
+    @constraint(model_quadratic_Pw_T_01, [i=1:N], beta00_2 + beta01_2*Pw_train_scaled[i]^2 + beta02_2*T_train_scaled[i]^2 + 
+    beta03_2*Pw_train_scaled[i]*T_train_scaled[i] + beta04_2*Pw_train_scaled[i]^2*T_train_scaled[i] == HTO_01_2[i])
+
+    # defining the objective function for the polynomial regression model
+    @objective(model_quadratic_Pw_T_01, Min, sum((HTO_01_2[i] - HTO_train_scaled[i])^2 for i in 1:N))
 
 
+    ##=====================================================================
+    @variable(model_logarithmic_Pw_T_01, beta00_3)
+    @variable(model_logarithmic_Pw_T_01, beta01_3)
+    @variable(model_logarithmic_Pw_T_01, beta02_3)
+    @variable(model_logarithmic_Pw_T_01, beta03_3)
+    @variable(model_logarithmic_Pw_T_01, beta04_3)
+    @variable(model_logarithmic_Pw_T_01, beta05_3)
 
-
+    @variable(model_logarithmic_Pw_T_01, c >= 0.0)
+    @variable(model_logarithmic_Pw_T_01, HTO_01_3[1:N])
+    #create the constraints for the polynomial regression model
+    @constraint(model_logarithmic_Pw_T_01, [i=1:N], beta00_3 + beta01_3*log(Pw_train_scaled[i]+c) + beta02_3*log(Pw_train_scaled[i]+c)^2
+                                                     + beta03_3*log(T_train_scaled[i]+c) + beta04_3*log(T_train_scaled[i]+c)^2
+                                                     + beta05_3*log(Pw_train_scaled[i]+c)*log(T_train_scaled[i]+c)== HTO_01_3[i])
+    # defining the objective function for the polynomial regression model
+    @objective(model_logarithmic_Pw_T_01, Min, sum((HTO_01_3[i] - HTO_train_scaled[i])^2 for i in 1:N))
 
     ##=====================================================================
     #solving the optimization probelm
@@ -382,11 +431,20 @@ function SurrogateModel_SeveralModels()
     println("Optimizing the hyperbolic model...")
     optimize!(model_hyperbolic_Pw_T_01)
 
+    println("Optimizing the model...")
+    optimize!(model_quadratic_Pw_T_01)
+
+    println("Optimizing the model...")
+    optimize!(model_logarithmic_Pw_T_01)
+
+
     ##=====================================================================
     #Cheking the solver status and printing the results
     ##=====================================================================
 
-    println("Solver status for combination model: ", termination_status(model_hyperbolic_Pw_T_01))
+    println("Solver status for combination model 1: ", termination_status(model_hyperbolic_Pw_T_01))
+    println("Solver status for combination model 2: ", termination_status(model_quadratic_Pw_T_01))
+    println("Solver status for combination model 3: ", termination_status(model_logarithmic_Pw_T_01))
 
 
 
@@ -395,30 +453,55 @@ function SurrogateModel_SeveralModels()
     if is_solved_and_feasible(model_hyperbolic_Pw_T_01)
         println("Objective value for hyperbolic 1 model: ", objective_value(model_hyperbolic_Pw_T_01))
         println("\nHyperbolic model 1:")
-        println("beta0 = ", value(beta00))
-        println("beta1 = ", value(beta01))
-        println("beta2 = ", value(beta02))
-        println("beta3 = ", value(beta03))
-        println("beta4 = ", value(beta04))
+        println("beta0 = ", value(beta00_1))
+        println("beta1 = ", value(beta01_1))
+        println("beta2 = ", value(beta02_1))
+        println("beta3 = ", value(beta03_1))
+        println("beta4 = ", value(beta04_1))
+        println("beta5 = ", value(beta05_1))
+        println("c = ", value(c))
+
+    end
+
+    if is_solved_and_feasible(model_quadratic_Pw_T_01)
+        println("Objective value for hyperbolic 2 model: ", objective_value(model_quadratic_Pw_T_01))
+        println("\nHyperbolic model 2:")
+        println("beta0 = ", value(beta00_2))
+        println("beta1 = ", value(beta01_2))
+        println("beta2 = ", value(beta02_2))
+        println("beta3 = ", value(beta03_2))
+        println("beta4 = ", value(beta04_2))
 
     end
     
+    if is_solved_and_feasible(model_logarithmic_Pw_T_01)
+        println("Objective value for hyperbolic 3 model: ", objective_value(model_logarithmic_Pw_T_01))
+        println("\nHyperbolic model 3:")
+        println("beta0 = ", value(beta00_3))
+        println("beta1 = ", value(beta01_3))
+        println("beta2 = ", value(beta02_3))
+        println("beta3 = ", value(beta03_3))
+        println("beta4 = ", value(beta04_3))
+        println("beta5 = ", value(beta05_3))
+        println("c = ", value(c))
+
+    end
 end
 
 
 
 
 using PlotlyJS, CSV, DataFrames
-function Plot_surrogateModel_SeveralModels()
+function Plot_surrogateModel_SeveralInputs()
     data = CSV.read(joinpath("/home/annkar/NewCode/Data", "surrogate_data_Pw_T_training.csv"), DataFrame)
 
     Pw_train = data.Power
     T_train = data.Temperature
     HTO_train = data.HTO
 
-    Pw_train_scaled = scaled(Pw_train)
-    T_train_scaled = scaled(T_train)
-    HTO_train_scaled = scaled(HTO_train)
+    Pw_train_scaled = scaled_minmax(Pw_train)
+    T_train_scaled = scaled_minmax(T_train)
+    HTO_train_scaled = scaled_minmax(HTO_train)
 
  # Create 3D scatter plot
 
@@ -459,16 +542,34 @@ function Plot_surrogateModel_SeveralModels()
         Pw_grid = range(-0.3, 0.3, length=50)
         T_grid = range(-0.3, 0.3, length=50)
 
+        Pw_grid_1 = range(0.0, 1.0, length=50)
+        T_grid_1 = range(0.0, 1.0, length=50)
+
+
         # Define the polynomial regression model
-    
-        HTO_model_01(Pw, T) = -0.11426366984832503 -0.003920002733338371/(Pw -0.03953077268715382) + 0.0027439659308452847/(T + 0.09044948004792186)
+        c=0.1362954910068183
+        HTO_model_01(Pw, T) = -0.11490474695508877 - 0.003947790859593441/(Pw - 0.039384778041385717) +  0.0023095625649601735/(T + 0.09162797301511812) -1.3447129927084471*Pw*T
+        # HTO_model_02(Pw, T) = -2.461962206935696 + 0.00942920654246919/(Pw - 0.804112682795778) - 11.645982864942093/(Pw - 4.575324521987852 ) - 0.7829536671458648*Pw*T
         
+        HTO_model_02(Pw, T) = (-0.11897995541797607 + 0.030934450919375644/(Pw +c ) +0.016144644979632593/(Pw +c) +0.2755756754320907*Pw*T
+        -0.15593179069433777*Pw^2*T + 0.13735702670180194*T/(Pw+c))
+
+        HTO_model_03(Pw, T) =  0.20994714563010908 - 0.1662141239899781*Pw^2 + 0.6923260285334646*T^2 -1.9505367643294225*Pw*T + 1.4876514090667416*Pw^2*T 
+        
+        HTO_model_04(Pw, T) =(0.14918695953376368 -0.10890190194945905*log(Pw + 0.1362954910068183) + 0.1085048467783137*log(Pw+0.1362954910068183)^2
+                             + 0.2866120193400807*log(T + 0.1362954910068183) +0.12005084090890622*log(T + 0.1362954910068183)^2 
+                             - 0.127233130172627*log(Pw + 0.1362954910068183)*log(T + 0.1362954910068183))
         #create a meshgrid for HTO
 
         HTO_grid_01 = [HTO_model_01(Pw, T) for Pw in Pw_grid, T in T_grid]
+        HTO_grid_02 = [HTO_model_02(Pw, T) for Pw in Pw_grid_1, T in T_grid_1]
+
+        HTO_grid_03 = [HTO_model_03(Pw, T) for Pw in Pw_grid_1, T in T_grid_1]
+
+        HTO_grid_04 = [HTO_model_04(Pw, T) for Pw in Pw_grid_1, T in T_grid_1]
         
         # Create 3D surface plots
-        surface_trace01 = PlotlyJS.surface(x = Pw_grid, y = T_grid, z = HTO_grid_01,
+        surface_trace01 = PlotlyJS.surface(x = Pw_grid_1, y = T_grid_1, z = HTO_grid_02,
             colorscale = "Viridis", showscale = true, colorbar = attr(title = "HTO"),
             name = "Surrogate Model"
         )
@@ -478,7 +579,7 @@ function Plot_surrogateModel_SeveralModels()
         # Layout
 
         trace_train = PlotlyJS.scatter3d(x = Pw_train_scaled, y = T_train_scaled, z = HTO_train_scaled, mode = "markers",
-            marker = attr(size = 5, color = HTO_train_scaled, colorscale = "Viridis",  showscale = true, colorbar = attr(title = "HTO")
+            marker = attr(size = 5, color = "red"
             ),
             name = "Training scaled data"
         )        
@@ -498,6 +599,6 @@ function Plot_surrogateModel_SeveralModels()
 
 end
 
-export fit_surrogate, Plot_surrogateModel, SurrogateModel_validationData, Plot_surrogateModel_SeveralModels, SurrogateModel_SeveralModels
+export fit_surrogate, Plot_surrogateModel, SurrogateModel_validationData, Plot_surrogateModel_SeveralInputs, SurrogateModel_SeveralInputs
 
 
