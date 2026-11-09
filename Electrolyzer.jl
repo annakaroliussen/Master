@@ -676,37 +676,38 @@ using DataFrames
 function create_initial_conditions()
 
     Temp_K = collect(353.15:-0.1:290.15) 
-    Pressure_bar = collect(0.9:0.001:3.2)
+    Pressure_bar = collect(30.0:-0.1:1.0)
     Power_values= [6000.0, 9000.0, 12000.0, 16000.0, 24000.0, 30000.0, 42000.0, 50000.0, 60000.0]
     init_state = deserialize(joinpath(@__DIR__, "init_ss_T353_60.jls"))  # Reset at the start of each power sweep
-     for (i, P) in enumerate(Power_values)
+     for (i, P) in enumerate(Temp_K)
          # println("Running cathode pressure = $(p_bar) bar")
          println("Running power = $(P) W")
-         sol, el, final_state = test_Electrolyzer(; T_stack_K=353.15, P_cathode_bar=30, P_anode_bar=1.0, power=P, init_state=init_state
+         sol, el, final_state = test_Electrolyzer(; T_stack_K=P, P_cathode_bar=30, P_anode_bar=1.0, power=60000.0, init_state=init_state
              )
         init_state = final_state
        
         Pw = sol[el.Pw.u][end]
+        T = sol[el.T.u][end]
         println("Final power = $(Pw) W")
-
-        if isapprox(Pw, 6000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_6.jls"), init_state)
-        elseif isapprox(Pw, 9000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_9.jls"), init_state)
-        elseif isapprox(Pw, 12000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_12.jls"), init_state)
-        elseif isapprox(Pw, 16000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_16.jls"), init_state)
-        elseif isapprox(Pw, 24000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_24.jls"), init_state)
-        elseif isapprox(Pw, 30000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_30.jls"), init_state)
-        elseif isapprox(Pw, 42000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_42.jls"), init_state)
-        elseif isapprox(Pw, 50000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_50.jls"), init_state)
-        elseif isapprox(Pw, 60000.0, atol=0.05)
-            serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_60.jls"), init_state)
+        println("Final temperature = $(T) K")
+        if isapprox(T, 343.15, atol=0.05)
+            serialize(joinpath("/home/annkar/NewCode/Surrogate_Pc_Pw", "init_ss_T343_60.jls"), init_state)
+        elseif isapprox(T, 313.15, atol=0.05)
+            serialize(joinpath("/home/annkar/NewCode/Surrogate_Pc_Pw", "init_ss_T313_60.jls"), init_state)
+        elseif isapprox(T, 293.15, atol=0.05)
+            serialize(joinpath("/home/annkar/NewCode/Surrogate_Pc_Pw", "init_ss_T293_60.jls"), init_state)
+        # elseif isapprox(Pw, 16000.0, atol=0.05)
+        #     serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_16.jls"), init_state)
+        # elseif isapprox(Pw, 24000.0, atol=0.05)
+        #     serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_24.jls"), init_state)
+        # elseif isapprox(Pw, 30000.0, atol=0.05)
+        #     serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_30.jls"), init_state)
+        # elseif isapprox(Pw, 42000.0, atol=0.05)
+        #     serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_42.jls"), init_state)
+        # elseif isapprox(Pw, 50000.0, atol=0.05)
+        #     serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_50.jls"), init_state)
+        # elseif isapprox(Pw, 60000.0, atol=0.05)
+        #     serialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_60.jls"), init_state)
         # elseif isapprox(Pa, 3.09, atol=0.05)
         #     serialize(joinpath(@__DIR__, "init_ss_Pa309_15.jls"), init_state)
         #  elseif isapprox(T, 293.15, atol=0.05)
@@ -742,10 +743,10 @@ function generate_surrogate_data()
     # Definer effektverdiene
     # Power_values = collect(6000.0:6000.0:60000.0)
 
-    Power_values_val = [9000.0, 15000.0, 27000.0, 45000.0]
-    Power_values_training= [6000.0, 12000.0, 24000.0, 42000.0, 60000.0]
-    Temperature_values = collect(353.15:-0.1:283.15) #plot this again, begin from high to low
-
+    Power_values_val =[30000.0] # For validation, we can use 3 points, low, medium and high power
+    Power_values_training= collect(6000.0:250.0:60000.0) # For training, we can use 10 points, low, medium and high power
+    Temperature_values = [343.15, 313.15, 293.15] #plot this again, begin from high to low
+    Pressure_values = [24.0, 17.0, 10.0] #plot this again, begin from high to low
 
 
     # Konstante betingelser
@@ -754,7 +755,7 @@ function generate_surrogate_data()
     P_cathode = 30.0
 
     # Les inn initialbetingelser
-    initial_state = deserialize(joinpath(@__DIR__, "init_ss_T333_60.jls")    )
+    # initial_state = deserialize(joinpath(@__DIR__, "init_ss_T333_60.jls"))
 
     # Opprett DataFrame
     data = DataFrame(
@@ -765,7 +766,7 @@ function generate_surrogate_data()
         HTO = Float64[]
     )
 
-    drive01=true
+    drive01=false
 
     if drive01
         # Kjør simuleringer
@@ -803,20 +804,20 @@ function generate_surrogate_data()
     #temperature dependecies
 
 
-    drive_02 = false
+    drive_02 = true
 
     if drive_02
-        for P in Power_values_val
-         i = round(Int, P/1000)
-         initial_state = deserialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_$(i).jls"))
-
-         for T in Temperature_values
-
+        for P in Pressure_values
+        #  i = round(Int, T)
+        #  initial_state = deserialize(joinpath("/home/annkar/NewCode/Surrogate_T_Pw", "init_ss_T353_$(i).jls"))
+         initial_state = deserialize(joinpath("/home/annkar/NewCode/Surrogate_Pc_Pw", "init_ss_T333_60.jls"))
+         for Pw in Power_values_training
+            println("Simulating power = $Pw W and Pressure = $P bar")
              sol, el, final_state = test_Electrolyzer(;
-                 T_stack_K = T,
-                 P_cathode_bar = P_cathode,
+                 T_stack_K = T_stack,
+                 P_cathode_bar = P,
                  P_anode_bar = P_anode,
-                 power = P,
+                 power = Pw,
                  init_state = initial_state
              )
 
@@ -826,24 +827,34 @@ function generate_surrogate_data()
             P_anode_1 = sol[el.P_a.u][end] * 1e-5
             P_cathode_1 = sol[el.P_c.u][end] * 1e-5
             Pw_1 = sol[el.Pw.u][end]
-
+            
+            push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
             # Lagre resultat
-            if isapprox(T_1, 344.15, atol=0.05)
-                println("HTO at power $P W and temperature $T_1 K: $HTO_1")
-                println("Power: input = $P W, calculated = $Pw_1 W")
-                println("Temperature: input = $T K, calculated = $T_1 K")
-                push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
-            elseif isapprox(T_1, 326.15, atol=0.05)
-                println("HTO at power $P W and temperature $T_1 K: $HTO_1")
-                println("Power: input = $P W, calculated = $Pw_1 W")
-                println("Temperature: input = $T K, calculated = $T_1 K")
-                push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
-            elseif isapprox(T_1, 291.15, atol=0.05)
-                println("HTO at power $P W and temperature $T_1 K: $HTO_1")
-                println("Power: input = $P W, calculated = $Pw_1 W")
-                println("Temperature: input = $T K, calculated = $T_1 K")
-                push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))            
-            end
+            # if isapprox(P_cathode_1,27 , atol=0.05)
+            #     println("HTO at power $Pw_1 W and $P_cathode_1 K: $HTO_1")
+            #     push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
+            # elseif isapprox(P_cathode_1, 23, atol=0.05)
+            #     println("HTO at power $Pw_1 W and $P_cathode_1 K: $HTO_1")
+            #     push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
+            # elseif isapprox(P_cathode_1, 15, atol=0.05)
+            #     println("HTO at power $Pw_1 W and  $P_cathode_1 K: $HTO_1")
+            #     push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
+            # elseif isapprox(P_cathode_1, 7, atol=0.05)
+            #     println("HTO at power $Pw_1 W and $P_cathode_1 K: $HTO_1")
+            #     push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
+            # elseif isapprox(P_cathode_1, 3, atol=0.05)
+            #     println("HTO at power $Pw_1 W and $P_cathode_1 K: $HTO_1")
+            #     push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))   
+            # elseif isapprox(P_cathode_1, 9, atol=0.05)
+            #     println("HTO at power $Pw_1 W and$P_cathode_1 K: $HTO_1")
+            #     push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
+            # elseif isapprox(P_cathode_1, 5, atol=0.05)
+            #     println("HTO at power $Pw_1 W and $P_cathode_1 K: $HTO_1")
+            #     push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
+            # elseif isapprox(P_cathode_1, 1, atol=0.05)
+            #     println("HTO at power $Pw_1 W and $P_cathode_1 K: $HTO_1")
+            #     push!(data, (Pw_1, T_1, P_anode_1, P_cathode_1, HTO_1))
+            # end
 
 
              # Oppdater initialbetingelser
@@ -856,7 +867,7 @@ function generate_surrogate_data()
 
 
     # Lagre resultatene
-    CSV.write(joinpath("/home/annkar/NewCode/Data", "surrogate_data_Pw_validation.csv"), data)
+    CSV.write(joinpath("/home/annkar/NewCode/Data", "Plot_HTO_vs_varyPc.csv"), data)
 
     println("Simulation data saved!")
 
