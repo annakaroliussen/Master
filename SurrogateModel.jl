@@ -394,12 +394,12 @@ function Plot_surrogateModel()
     # ============================================
 
     data_training = CSV.read(
-        "/home/annkar/NewCode/Data/surrogate_data.csv",
+        "/home/annkar/NewCode/Data/Training_data_Pc.csv",
         DataFrame
     )
 
     data_validation = CSV.read(
-        "/home/annkar/NewCode/Data/surrogate_data_Pw_validation.csv",
+        "/home/annkar/NewCode/Data/Validation_data_Pc.csv",
         DataFrame
     )
 
@@ -407,10 +407,12 @@ function Plot_surrogateModel()
 
 
 
-    Pw_training = scaled_minmax(data_training.Power, minimum(data_training.Power), maximum(data_training.Power))
+
+
+    Pw_training = scaled_minmax(data_training.P_cathode, minimum(data_training.P_cathode), maximum(data_training.P_cathode))
     HTO_training = data_training.HTO
 
-    Pw_validation = scaled_minmax(data_validation.Power, minimum(data_training.Power), maximum(data_training.Power))
+    Pw_validation = scaled_minmax(data_validation.P_cathode, minimum(data_training.P_cathode), maximum(data_training.P_cathode))
     HTO_validation = data_validation.HTO
 
     Pw = range(0.0, 1.0, length=100)
@@ -420,25 +422,25 @@ function Plot_surrogateModel()
     # ============================================
     # Load models from dictionary
     # ============================================
-    # model_linear = LoadModel_OneInput("Power_linear")
+    model_linear = LoadModel_OneInput("Pressure_linear")
 
-    model_quad = LoadModel_OneInput("Power_quadratic")
+    model_quad = LoadModel_OneInput("Temperature_quadratic")
 
     model_hyp1 = LoadModel_OneInput("Power_hyperbolic_1")
     model_hyp2 = LoadModel_OneInput("Power_hyperbolic_2")
-    model_hyp3 = LoadModel_OneInput("Power_hyperbolic_3")
+    model_hyp3 = LoadModel_OneInput("Temperature_hyperbolic_3")
     # model_hyp4 = LoadModel_OneInput("Power_hyperbolic_4")
 
-    model_log = LoadModel_OneInput("Power_logarithmic")
+    model_log = LoadModel_OneInput("Pressure_logarithmic")
 
-    # model_comb1 = LoadModel_OneInput("Power_log_hyperbolic_1")
-    model_comb2 = LoadModel_OneInput("Power_log_hyperbolic_2")
+    model_comb1 = LoadModel_OneInput("Pressure_log_hyperbolic_1")
+    # model_comb2 = LoadModel_OneInput("Power_log_hyperbolic_2")
     # model_comb3 = LoadModel_OneInput("Power_log_hyperbolic_3")
 
     # ============================================
     # Extract beta, c and SSE
     # ============================================
-    # beta_lin = model_linear["beta"]
+    beta_lin = model_linear["beta"]
     beta_quad = model_quad["beta"]
 
     beta_hyp1 = model_hyp1["beta"]
@@ -456,12 +458,12 @@ function Plot_surrogateModel()
     c_log = model_log["c"]
     
 
-    # beta_comb1 = model_comb1["beta"]
-    beta_comb2 = model_comb2["beta"]
+    beta_comb1 = model_comb1["beta"]
+    # beta_comb2 = model_comb2["beta"]
     # beta_comb3 = model_comb3["beta"]
 
-    # c_comb1 = model_comb1["c"]
-    c_comb2 = model_comb2["c"]
+    c_comb1 = model_comb1["c"]
+    # c_comb2 = model_comb2["c"]
     # c_comb3 = model_comb3["c"]
 
     # ============================================
@@ -530,26 +532,26 @@ function Plot_surrogateModel()
     # Plot
     # ============================================
 
-    p = plot( Pw_training, HTO_training, seriestype = :scatter,  label = "Training Data",
-        xlabel = "Power (W)",
-        ylabel = "HTO",
-        title = "Surrogate Models",
-        legend = :topright
+    p = Plots.plot( Pw_training, HTO_training, seriestype = :scatter,  label = "Training Data",
+        xlabel = "Normalized Cathode Pressure (-)",
+        ylabel = "HTO (%)",
+        title = "Comparison of HTO Surrogate Models",
+        legend = :topleft
     )
 
-    scatter!(Pw_validation, HTO_validation, seriertype = :scatter,  label = "Validation Data"
+    Plots.scatter!(Pw_validation, HTO_validation, seriertype = :scatter,  label = "Validation Data"
     )
 
-    # plot!(Pw, HTO_lin.(Pw),  label = "Linear, SSE = $(round(model_linear["SSE"], digits=10))")
-    # plot!(Pw, HTO_quad.(Pw),  label = "Quadratic, SSE = $(round(model_quad["SSE"], digits=10))")
-    plot!(Pw, HTO_log.(Pw),  label = "Logarithmic, SSE = $(round(model_log["SSE"], digits=5))")
+    Plots.plot!(Pw, HTO_lin.(Pw),  label = "Linear, SSE = $(round(model_linear["SSE"], digits=10))")
+    # Plots.plot!(Pw, HTO_quad.(Pw),  label = "Quadratic, SSE = $(round(model_quad["SSE"], digits=10))")
+    Plots.plot!(Pw, HTO_log.(Pw), linestyle = :dash,  label = "Logarithmic,  SSE = $(round(model_log["SSE"], digits=10))")
     
-    plot!(Pw, HTO_hyp1.(Pw),  label = "Hyperbolic 1, SSE = $(round(model_hyp1["SSE"], digits=6))")
-    plot!(Pw, HTO_hyp2.(Pw),  label = "Hyperbolic 2, SSE = $(round(model_hyp2["SSE"], digits=4))")
-    plot!(Pw, HTO_hyp3.(Pw),  label = "Hyperbolic 3, SSE = $(round(model_hyp3["SSE"], digits=6))")
+    # Plots.plot!(Pw, HTO_hyp1.(Pw),linestyle = :dashdot,  label = "Hyperbolic 1,  SSE = $(round(model_hyp1["SSE"], digits=6))")
+    # Plots.plot!(Pw, HTO_hyp2.(Pw),linestyle = :dashdotdot,  label = "Hyperbolic 2,  SSE = $(round(model_hyp2["SSE"], digits=4))")
+    # Plots.plot!(Pw, HTO_hyp3.(Pw),linestyle = :dot,  label = "Hyperbolic 3,  SSE = $(round(model_hyp3["SSE"], digits=6))")
     
-    # plot!(Pw, HTO_comb1.(Pw), label = "Combination 1, SSE = $(round(model_comb1["SSE"], digits=10))")
-    plot!(Pw, HTO_comb2.(Pw), label = "Combination 2, SSE = $(round(model_comb2["SSE"], digits=8))")
+    plot!(Pw, HTO_comb1.(Pw),linestyle = :dashdotdot, label = "Combination 1, SSE = $(round(model_comb1["SSE"], digits=10))")
+    # Plots.plot!(Pw, HTO_comb2.(Pw),linestyle = :dash, label = "Combination 2,  SSE = $(round(model_comb2["SSE"], digits=8))")
     # plot!(Pw, HTO_comb3.(Pw), label = "Combination 3, SSE = $(round(model_comb3["SSE"], digits=10))")
 
     display(p)
@@ -637,7 +639,7 @@ function SurrogteModel_validationData()
 end
 
 function SurrogateModel_SeveralInputs()
-    data = CSV.read(joinpath("/home/annkar/NewCode/Data", "surrogate_data_Pw_T_training.csv"), DataFrame)
+    data = CSV.read(joinpath("/home/annkar/NewCode/Data", "Surrogate_data_Pw_T_training_10levels.csv"), DataFrame)
 
     
     Pw_train = data.Power
@@ -646,8 +648,8 @@ function SurrogateModel_SeveralInputs()
 
     Pw_train_scaled = scaled_minmax(Pw_train, minimum(Pw_train), maximum(Pw_train))
     T_train_scaled = scaled_minmax(T_train, minimum(T_train), maximum(T_train))
-    HTO_train_scaled = scaled_minmax(HTO_train, minimum(HTO_train), maximum(HTO_train))
-
+    # HTO_train_scaled = scaled_minmax(HTO_train, minimum(HTO_train), maximum(HTO_train))
+    HTO_train_scaled = HTO_train
     N = length(Pw_train_scaled)
 
     ##=====================================================================
@@ -666,18 +668,18 @@ function SurrogateModel_SeveralInputs()
     #defining variables for the differet polynomial regression models
     ##=====================================================================
 
-    @variable(model_hyperbolic_Pw_T_01, beta00_1, start=0.1069)
+    @variable(model_hyperbolic_Pw_T_01, beta00_1, start=-0.1069)
     @variable(model_hyperbolic_Pw_T_01, beta01_1, start=-0.0758)
-    @variable(model_hyperbolic_Pw_T_01, beta02_1, start= 0.2783)
-    @variable(model_hyperbolic_Pw_T_01, beta03_1, start= 0.3104)
+    @variable(model_hyperbolic_Pw_T_01, beta02_1, start=- 0.2783)
+    @variable(model_hyperbolic_Pw_T_01, beta03_1, start= -0.3104)
     @variable(model_hyperbolic_Pw_T_01, beta04_1, start= -0.1149)
-    @variable(model_hyperbolic_Pw_T_01, beta05_1, start= 0.3256)
-    @variable(model_hyperbolic_Pw_T_01, beta06_1, start= 0.1618)
-    @variable(model_hyperbolic_Pw_T_01, beta07_1, start= 0.1685)
-    @variable(model_hyperbolic_Pw_T_01, beta08_1, start= 0.0417)
-    @variable(model_hyperbolic_Pw_T_01, c0 >= 0.0, start= 0.1176)
-    @variable(model_hyperbolic_Pw_T_01, c1 >= 0.0, start= 0.1154)
-    @variable(model_hyperbolic_Pw_T_01, c2 >= 0.0, start= 0.1472)
+    @variable(model_hyperbolic_Pw_T_01, beta05_1, start=- 0.3256)
+    @variable(model_hyperbolic_Pw_T_01, beta06_1, start= -0.1618)
+    @variable(model_hyperbolic_Pw_T_01, beta07_1, start= -0.1685)
+    @variable(model_hyperbolic_Pw_T_01, beta08_1, start= -0.0417)
+    @variable(model_hyperbolic_Pw_T_01, 1000 >=c0 >= 0.001, start=- 0.1176)
+    @variable(model_hyperbolic_Pw_T_01, 1000 >=c1 >= 0.001, start=- 0.1154)
+    @variable(model_hyperbolic_Pw_T_01, 1000 >=c2 >= 0.001, start=- 0.1472)
 
     @variable(model_hyperbolic_Pw_T_01, HTO_01_1[1:N])
     #create the constraints for the polynomial regression model
@@ -786,7 +788,7 @@ function SurrogateModel_SeveralInputs()
             println(beta_hyp)
             println(c_hyp)
 
-            SaveModel_TwoInput("Pw_T_hyperbolic_v3", beta_hyp, c_hyp, SSE_hyp)        
+            SaveModel_TwoInput("Pw_T_hyperbolic_v3_10levels", beta_hyp, c_hyp, SSE_hyp)        
 
         end
     end
@@ -863,22 +865,6 @@ function SurrogateModel_SeveralInputs()
 
 end
 
-# using Plots
-
-# data0 = CSV.read(joinpath("/home/annkar/NewCode/Data", "Plot_HTO_vs_varyT.csv"), DataFrame)
-
-# HTO_9 = data0.HTO[1:217]
-# HTO_30 = data0.HTO[218:434]
-# HTO_60 = data0.HTO[435:651]
-
-# Pc_9 = data0.Power[1:217]*1e-3
-# Pc_30 = data0.Power[218:434]*1e-3
-# Pc_60 = data0.Power[435:651]*1e-3
-
-# plot(Pc_9, HTO_9, label="T=343.15 K, Pc = 30 bar")
-# plot!(Pc_30, HTO_30, label="T=313.15 K, Pc = 30 bar")
-# plot!(Pc_60, HTO_60, label="T=293.15 K, Pc = 30 bar", xlabel="Power (kW)", ylabel="HTO (%)", title="HTO vs Power, const Pressure", legend=:topright)
-
 
 
 using PlotlyJS, CSV, DataFrames
@@ -897,10 +883,11 @@ function Plot_surrogateModel_SeveralInputs()
     Pw_train_scaled = scaled_minmax(Pw_train, minimum(Pw_train), maximum(Pw_train))
     T_train_scaled = scaled_minmax(T_train, minimum(T_train), maximum(T_train))
     HTO_train_scaled = scaled_minmax(HTO_train, minimum(HTO_train), maximum(HTO_train))
-
+    # HTO_train_scaled = HTO_train
     Pw_validation_scaled = scaled_minmax(Pw_validation, minimum(Pw_train), maximum(Pw_train))
     T_validation_scaled = scaled_minmax(T_validation, minimum(T_train), maximum(T_train))
     HTO_validation_scaled = scaled_minmax(HTO_validation, minimum(HTO_train), maximum(HTO_train))
+    # HTO_validation_scaled = HTO_validation
  # Create 3D scatter plot
 
     plotScatter = false
@@ -933,7 +920,7 @@ function Plot_surrogateModel_SeveralInputs()
     
     end
 
-    model_hyp = LoadModel_TwoInput("Pw_T_hyperbolic_v3")
+    model_hyp = LoadModel_TwoInput("Pw_T_hyperbolic_v2")
     beta_hyp = model_hyp["beta"]
     c_hyp = model_hyp["c"]
 
@@ -951,8 +938,8 @@ function Plot_surrogateModel_SeveralInputs()
     plotPolynomial = true
 
     if plotPolynomial
-        Pw_grid = range(-0.3, 0.3, length=50)
-        T_grid = range(-0.3, 0.3, length=50)
+        # Pw_grid = range(-0.3, 0.3, length=50)
+        # T_grid = range(-0.3, 0.3, length=50)
 
         Pw_grid_1 = range(0.0, 1.0, length=50)
         T_grid_1 = range(0.0, 1.0, length=50)
@@ -1000,7 +987,7 @@ function Plot_surrogateModel_SeveralInputs()
         HTO_grid_log = [HTO_model_log(Pw, T) for Pw in Pw_grid_1, T in T_grid_1]
         
         # Create 3D surface plots
-        surface_trace01 = PlotlyJS.surface(x = Pw_grid_1, y = T_grid_1, z = HTO_grid_log,
+        surface_trace01 = PlotlyJS.surface(x = Pw_grid_1, y = T_grid_1, z = HTO_grid_hyp,
             colorscale = "Viridis", showscale = true, colorbar = attr(title = "HTO"),
             name = "Surrogate Model"
         )     
@@ -1031,9 +1018,11 @@ function Plot_surrogateModel_SeveralInputs()
         residuals = predictions - HTO_validation_scaled
         SSE = sum(residuals.^2)
         RSME = sqrt(SSE / length(data_validation.Power))
+
         println("SSE for function: $SSE")
         println("RMSE for function: $RSME")
         println("--------------------------------------------------")
+        println(HTO_model_hyp3(0.2, 1))
     end
 
 
